@@ -1,41 +1,53 @@
 # database.py
 
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+from backend.models import User
 
-# Create an engine
-# For SQLite
 SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
-# # For simplicity & quick setup, start w SQLite. Can switch to PostgreSQL later if needed.#
 # SQLALCHEMY_DATABASE_URL = "postgresql://user:password@postgresserver/db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-# Create a SessionLocal class
+# engine instance, all SQL statements made by program when interacting w DB will be logged to the console.
+# engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=True)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Define the database model
 Base = declarative_base()
 
-# new class for the database, from git copilor
-class UserTable(Base):
-    __tablename__ = "user_table"
-    id = Column(Integer, primary_key=True, index=True)
-    data = Column(String, index=True)
+# my fiddling
+# Create DB tables (uncomment if needed)
+# Base.metadata.create_all(bind=engine)
 
+# Dependency for getting a database session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-# Create all tables
-Base.metadata.create_all(bind=engine)
+# Example function to add a user
+def add_user(name: str, email: str):
+    db = SessionLocal()
+    new_user = User(name=name, email=email)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    db.close()
+    return new_user
 
-# Create a session
-db = SessionLocal()
+# Example function to get all users
+def get_users():
+    db = SessionLocal()
+    users = db.query(User).all()
+    db.close()
+    return users
 
-# Query for all data in the table
-data = db.query(UserTable).all()
-
-# Iterate and print data
-for row in data:
-    print(row.id, row.data)
-
-# Close the session
-db.close()
+# Example function to get a user by ID
+def get_user_by_id(user_id: int):
+    db = SessionLocal()
+    user = db.query(User).filter(User.id == user_id).first()
+    return user
+    
